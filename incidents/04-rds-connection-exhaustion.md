@@ -1,6 +1,6 @@
 # Drill 04 — RDS connection exhaustion
 
-**Status:** PLAN (not yet executed) · **Region:** us-east-1 · **Prefix:** cops
+**Status:** ✅ EXECUTED 2026-07-10 — alarm **did not fire**: connections plateaued at 72, below the >80 threshold (above a t3.micro's real ceiling); pressure cascaded to app health; orphaned connections cleared by an RDS reboot. Findings: [RESULTS-2026-07-10.md](RESULTS-2026-07-10.md) · **Region:** us-east-1 · **Prefix:** cops
 
 ## Hypothesis
 

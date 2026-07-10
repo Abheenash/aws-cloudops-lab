@@ -1,6 +1,6 @@
 # Drill 05 — DB dependency failure (network cut)
 
-**Status:** PLAN (not yet executed) · **Region:** us-east-1 · **Prefix:** cops
+**Status:** ✅ EXECUTED 2026-07-10 — `cops-alb-5xx` fired, **detection 166 s**; recovered by restoring the SG rule. Full results: [RESULTS-2026-07-10.md](RESULTS-2026-07-10.md) · **Region:** us-east-1 · **Prefix:** cops
 
 ## Hypothesis
 

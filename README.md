@@ -46,12 +46,11 @@ Full diagram lands in [`architecture/`](architecture/).
 
 **Execution** (populates the evidence folders with real, measured results — run against a live `terraform apply`):
 
-- [x] **Drill 01 (elevated 5xx) — executed 2026-07-10.** Detected in **177s**; [results](incidents/01-elevated-5xx.md) + [RCA](incidents/2026-07-10-drill01-rca.md). Stack applied live, then destroyed.
-- [ ] Run the remaining four incident drills; record detection time, evidence, and an RCA each
-- [ ] Run the timed restore test; record measured RTO vs the 60-min target
-- [ ] Brownfield exercise: create a resource by hand, then `terraform import` + resolve drift
-- [ ] Enable the security baseline; triage the first GuardDuty/Config/Inspector findings
-- [ ] Publish a monthly operating report from real numbers
+- [x] **All 5 incident drills executed (2026-07-10)** — full report: [incidents/RESULTS-2026-07-10.md](incidents/RESULTS-2026-07-10.md). 3 alarms fired (177 s / 289 s / 166 s); 2 surfaced real alarm-tuning findings (single-instance failure self-heals before the alarm; rds-connections threshold above the instance ceiling). Drill 01 also has a standalone [RCA](incidents/2026-07-10-drill01-rca.md).
+- [x] **Timed restore test** — measured **RTO 6 m 36 s** vs the 60-min target, query-validated ([RESULTS](incidents/RESULTS-2026-07-10.md#restore-test--pass)).
+- [x] **Brownfield import/drift** — `terraform import` → drift → detect → revert, captured in [brownfield/README.md](brownfield/README.md).
+- [x] **Monthly operating report** from real numbers — [cost-analysis/2026-07-operating-report.md](cost-analysis/2026-07-operating-report.md).
+- [ ] Enable the opt-in security baseline; triage first GuardDuty/Config/Inspector findings (account-wide services, deliberately left off by default — see the operating report).
 
 > **Honesty note:** every "Observations / Results" table in this repo is intentionally left with `<fill after run>` cells. Measured numbers get written only after the drill is actually executed — not before.
 

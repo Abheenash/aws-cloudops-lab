@@ -1,6 +1,6 @@
 # Drill 02 — Latency degradation
 
-**Status:** PLAN (not yet executed) · **Region:** us-east-1 · **Prefix:** cops
+**Status:** ✅ EXECUTED 2026-07-10 — `cops-alb-latency-p95` fired, **detection 289 s**; recovered. Full results: [RESULTS-2026-07-10.md](RESULTS-2026-07-10.md) · **Region:** us-east-1 · **Prefix:** cops
 
 ## Hypothesis
 

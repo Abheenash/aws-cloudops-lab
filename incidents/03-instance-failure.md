@@ -1,6 +1,6 @@
 # Drill 03 — Instance failure (ASG self-heal)
 
-**Status:** PLAN (not yet executed) · **Region:** us-east-1 · **Prefix:** cops
+**Status:** ✅ EXECUTED 2026-07-10 — alarm **did not fire**: self-healing (ASG + ELB health check) remediated faster than the 2×60 s window — a real tuning finding. Details: [RESULTS-2026-07-10.md](RESULTS-2026-07-10.md) · **Region:** us-east-1 · **Prefix:** cops
 
 ## Hypothesis
 
