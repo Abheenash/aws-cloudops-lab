@@ -1,6 +1,6 @@
 # Drill 01 — Elevated 5xx
 
-**Status:** PLAN (not yet executed) · **Region:** us-east-1 · **Prefix:** cops
+**Status:** ✅ EXECUTED 2026-07-10 (live run against a real `terraform apply`, then destroyed) · **Region:** us-east-1 · **Prefix:** cops
 
 ## Hypothesis
 
@@ -50,19 +50,27 @@ for i in $(seq 1 60); do curl -s -o /dev/null -w "%{http_code}\n" "http://$ALB_D
 - SNS `cops-alerts` should deliver a notification for the transition.
 - `cops-unhealthy-targets` should **stay OK** (health check independent of the 500 toggle) — if it also trips, that's a finding worth noting.
 
-## Observations — fill after execution
+## Observations — measured (run of 2026-07-10)
 
 | Field | Value |
 |-------|-------|
-| Date/time injected (UTC) | `<fill after run>` |
-| Time `cops-alb-5xx` entered ALARM | `<fill after run>` |
-| Detection latency (inject → alarm) | `<fill after run>` |
-| Alarms that fired | `<fill after run>` |
-| Composite `cops-service-health` state change time | `<fill after run>` |
-| SNS notification received? | `<fill after run>` |
-| Dashboard evidence (screenshot / link) | `<fill after run>` |
-| Did `cops-unhealthy-targets` stay OK? | `<fill after run>` |
-| Notes | `<fill after run>` |
+| Date/time injected (UTC) | **2026-07-10 17:54:15Z** (`FORCE_500` via SSM to both instances; `/` responses flipped 200→500 within ~10s) |
+| Time `cops-alb-5xx` entered ALARM | **2026-07-10 17:57:12Z** (confirmed in alarm history) |
+| **Detection latency (inject → alarm)** | **~2m57s (177s)** — ALB metric-publishing lag + the 60s evaluation period |
+| Peak error rate | **~48 `HTTPCode_Target_5XX_Count`/min** (17:55–17:56, per `get-metric-statistics`) |
+| Alarms that fired | `cops-alb-5xx` (confirmed) |
+| Composite `cops-service-health` state change time | **Unconfirmed** — the alarm-history API returned no state-change item for this window; its `StateReason` did reference the child's OK transition, so it was tracking the child. See Findings. |
+| SNS notification received? | No email delivered — this run used the default blank `alarm_email`, so `cops-alerts` had no subscriber (the alarm action still fired to the topic). Re-run with `alarm_email` set to verify delivery. |
+| Dashboard evidence | Target-5xx per-minute: 42 / 48 / 48 / 24 across 17:54–17:57Z (`cops-golden-signals` "Errors" widget) |
+| Did `cops-unhealthy-targets` stay OK? | **Yes** during the drill — it did *not* fire from `FORCE_500` (it only fired earlier, 17:47–17:48Z, while the 2nd instance was still booting). Confirms the health check is independent of the user-path failure, as designed. |
+| Recovery | Fault removed 17:57:47Z → `/` returned 200 immediately, both targets healthy, Target-5xx → 0. Alarm returned to **OK at 18:06:12Z** (~8m later). |
+
+## Findings (why we run the drill instead of assuming)
+
+1. **Detection is real and reasonable** — 177s from fault to page. Good enough to catch a customer-impacting outage, driven mostly by ALB's ~1–3 min metric latency (not something we control) plus the single 60s evaluation window.
+2. **Health-check independence confirmed.** The earlier fear — that forcing 500s would flip targets unhealthy and turn this into an ELB-503 scenario — did not happen, because `/health` is deliberately decoupled from the `FORCE_500` toggle. `cops-unhealthy-targets` stayed OK throughout the drill.
+3. **Slow alarm recovery (~8m).** `HTTPCode_Target_5XX_Count` is emitted by the ALB *only when non-zero*, so after recovery the metric goes **missing**, and with `treat_missing_data = notBreaching` the alarm takes several minutes to evaluate its way back to OK. This is expected but worth knowing: "alarm cleared" lagged "service recovered" by ~8 minutes. Follow-up: accept it, or add a fast recovery signal (e.g. a healthy-request canary) if faster all-clear matters.
+4. **Composite behavior unconfirmed — follow-up.** `cops-alb-5xx` (a child of `cops-service-health`) definitely fired, but I could not confirm from the history API whether the composite itself transitioned to ALARM during the window. Next run: watch `cops-service-health` live during injection to close this out.
 
 ## Recover
 

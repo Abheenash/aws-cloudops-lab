@@ -46,7 +46,8 @@ Full diagram lands in [`architecture/`](architecture/).
 
 **Execution** (populates the evidence folders with real, measured results — run against a live `terraform apply`):
 
-- [ ] Run the five incident drills; record detection time, evidence, and an RCA each
+- [x] **Drill 01 (elevated 5xx) — executed 2026-07-10.** Detected in **177s**; [results](incidents/01-elevated-5xx.md) + [RCA](incidents/2026-07-10-drill01-rca.md). Stack applied live, then destroyed.
+- [ ] Run the remaining four incident drills; record detection time, evidence, and an RCA each
 - [ ] Run the timed restore test; record measured RTO vs the 60-min target
 - [ ] Brownfield exercise: create a resource by hand, then `terraform import` + resolve drift
 - [ ] Enable the security baseline; triage the first GuardDuty/Config/Inspector findings

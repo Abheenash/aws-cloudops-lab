@@ -35,8 +35,9 @@ def _db_check():
 
 @app.route("/health")
 def health():
-    if os.path.exists("/opt/app/FORCE_500"):
-        return ("forced-unhealthy", 500)
+    # Health reflects the real dependency only (DB), NOT the FORCE_500 drill
+    # toggle — so an elevated-5xx drill keeps targets healthy and generates
+    # genuine Target_5XX rather than flipping the ALB to 503/ELB_5XX.
     try:
         _db_check(); return ("ok", 200)
     except Exception as e:
