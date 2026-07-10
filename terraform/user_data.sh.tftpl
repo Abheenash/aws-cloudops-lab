@@ -1,0 +1,96 @@
+#!/bin/bash
+set -xe
+
+dnf update -y
+dnf install -y python3 python3-pip
+pip3 install flask gunicorn psycopg2-binary boto3
+
+mkdir -p /opt/app /var/log/copsapp
+
+# --- application ---------------------------------------------------------
+# A tiny Flask service that proves the DB dependency on every request, so the
+# incident drills (5xx, latency, DB failure) exercise a real request path.
+# Two flag files let a drill inject failure deterministically and safely:
+#   /opt/app/FORCE_500  -> return 500   (elevated-5xx drill)
+#   /opt/app/FORCE_SLOW -> add latency  (latency drill)
+cat > /opt/app/app.py <<'PYEOF'
+import os, json, time, boto3, psycopg2
+from flask import Flask
+
+app = Flask(__name__)
+_sm = boto3.client("secretsmanager", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+
+def _creds():
+    s = json.loads(_sm.get_secret_value(SecretId=os.environ["DB_SECRET_ARN"])["SecretString"])
+    return s["username"], s["password"]
+
+def _db_check():
+    u, p = _creds()
+    conn = psycopg2.connect(
+        host=os.environ["DB_HOST"],
+        dbname=os.environ.get("DB_NAME", "postgres"),
+        user=u, password=p, connect_timeout=3,
+    )
+    cur = conn.cursor(); cur.execute("SELECT 1"); cur.fetchone(); cur.close(); conn.close()
+
+@app.route("/health")
+def health():
+    if os.path.exists("/opt/app/FORCE_500"):
+        return ("forced-unhealthy", 500)
+    try:
+        _db_check(); return ("ok", 200)
+    except Exception as e:
+        return ("db-error: %s" % e, 500)
+
+@app.route("/")
+def index():
+    if os.path.exists("/opt/app/FORCE_SLOW"):
+        time.sleep(5)
+    if os.path.exists("/opt/app/FORCE_500"):
+        return ("forced-500", 500)
+    try:
+        _db_check(); return ("Cloud Ops Lab - app healthy\n", 200)
+    except Exception as e:
+        return ("db-error: %s\n" % e, 500)
+PYEOF
+
+# --- service -------------------------------------------------------------
+cat > /etc/systemd/system/copsapp.service <<SVCEOF
+[Unit]
+Description=Cloud Ops Lab app
+After=network-online.target
+
+[Service]
+Environment=DB_SECRET_ARN=${db_secret_arn}
+Environment=DB_HOST=${db_host}
+Environment=DB_NAME=${db_name}
+Environment=AWS_REGION=${region}
+ExecStart=/usr/local/bin/gunicorn --workers 2 --bind 0.0.0.0:8080 --chdir /opt/app --access-logfile /var/log/copsapp/access.log --error-logfile /var/log/copsapp/error.log app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+# --- log shipping (CloudWatch agent -> /cops/app) ------------------------
+dnf install -y amazon-cloudwatch-agent
+cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json <<'CWEOF'
+{
+  "agent": { "run_as_user": "root" },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          { "file_path": "/var/log/copsapp/access.log", "log_group_name": "/cops/app", "log_stream_name": "{instance_id}/access" },
+          { "file_path": "/var/log/copsapp/error.log",  "log_group_name": "/cops/app", "log_stream_name": "{instance_id}/error" }
+        ]
+      }
+    }
+  }
+}
+CWEOF
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json -s
+
+systemctl daemon-reload
+systemctl enable --now copsapp

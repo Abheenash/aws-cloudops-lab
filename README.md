@@ -20,7 +20,7 @@ Every incident in this repo is run through that full loop, and the artifacts (al
 
 A modest but production-shaped workload:
 
-- **Compute:** a small containerized service on ECS (or EC2) behind an Application Load Balancer.
+- **Compute:** a small Flask service on an EC2 Auto Scaling Group behind an Application Load Balancer (EC2 on purpose — so patching, Linux troubleshooting, and instance-recovery drills are real; see [ADR-001](architecture/adr-001-ec2-over-ecs.md)).
 - **Data:** Amazon RDS (with automated backups + a tested restore path).
 - **Observability:** CloudWatch dashboards (golden signals), Logs Insights queries, actionable alarms, a synthetics canary.
 - **Operations:** SSM Patch Manager (patch compliance), AWS Backup, resource scheduling for non-prod.
@@ -32,15 +32,27 @@ Full diagram lands in [`architecture/`](architecture/).
 
 ## Roadmap
 
-- [ ] Provision the base workload (ECS/EC2 + ALB + RDS) in Terraform
-- [ ] Wire observability: dashboard, Logs Insights queries, alarms, canary
+**Authored & validated** (the code, plans, and procedures are in this repo):
+
+- [x] Base workload as Terraform — EC2 ASG (Flask app) + ALB + RDS Postgres (`terraform/`, `terraform validate` clean)
+- [x] Observability: golden-signals dashboard, five alarms + composite health, saved Logs Insights queries, SNS (`terraform/observability.tf`)
+- [x] Runbooks — one per actionable alarm (`runbooks/`)
+- [x] Five incident **drill plans** with exact injection/recovery commands (`incidents/`)
+- [x] Patch-compliance, resource-health, and non-prod-scheduler automation (`automation/`)
+- [x] Timed restore-test plan against a 60-min RTO (`restore-tests/`)
+- [x] Security baseline as IaC (GuardDuty/Security Hub/Inspector/Config), opt-in (`terraform/security.tf`)
+- [x] Cost model + monthly operating-report template + budget guardrail (`cost-analysis/`, `terraform/budgets.tf`)
+- [x] Architecture diagram + ADRs (`architecture/`)
+
+**Execution** (populates the evidence folders with real, measured results — run against a live `terraform apply`):
+
+- [ ] Run the five incident drills; record detection time, evidence, and an RCA each
+- [ ] Run the timed restore test; record measured RTO vs the 60-min target
 - [ ] Brownfield exercise: create a resource by hand, then `terraform import` + resolve drift
-- [ ] Patch compliance via SSM Patch Manager + compliance report
-- [ ] AWS Backup + a **timed restore test** against a defined RTO
-- [ ] Security baseline: Config + GuardDuty + Inspector + Security Hub, triage findings
-- [ ] Cost: budgets + non-prod scheduling + monthly cost report
-- [ ] **Five incident drills**, each with detection time, evidence, recovery, and RCA
-- [ ] Monthly operating report tying it all together
+- [ ] Enable the security baseline; triage the first GuardDuty/Config/Inspector findings
+- [ ] Publish a monthly operating report from real numbers
+
+> **Honesty note:** every "Observations / Results" table in this repo is intentionally left with `<fill after run>` cells. Measured numbers get written only after the drill is actually executed — not before.
 
 ## Repo map
 
@@ -52,7 +64,7 @@ Full diagram lands in [`architecture/`](architecture/).
 | [`dashboards/`](dashboards/) | CloudWatch dashboard + alarm definitions |
 | [`logs-insights/`](logs-insights/) | Saved, sanitized Logs Insights queries |
 | [`runbooks/`](runbooks/) | One runbook per actionable alarm (validate → mitigate → roll back → verify) |
-| [`incidents/`](incidents/) | Sanitized incident timelines + root-cause analyses |
+| [`incidents/`](incidents/) | Five incident drill plans + RCA template (results fill on execution) |
 | [`restore-tests/`](restore-tests/) | Backup/restore test plans and timed results |
 | [`cost-analysis/`](cost-analysis/) | Baseline vs revised cost, scheduling savings, monthly report |
 | [`security-findings/`](security-findings/) | Findings from Config/GuardDuty/Inspector + remediation notes |

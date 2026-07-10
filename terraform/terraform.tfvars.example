@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars and edit. terraform.tfvars is git-ignored.
+
+region      = "us-east-1"
+prefix      = "cops"
+alarm_email = ""   # set to receive alarm + budget email
+
+# Turn on the account-wide security services only when running the
+# security-findings drill (they bill separately):
+enable_security_baseline = false
