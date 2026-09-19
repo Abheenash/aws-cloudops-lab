@@ -59,3 +59,5 @@ skip-check:
   - CKV_AWS_289  # same
   - CKV_AWS_297  # EventBridge Scheduler CMK: the schedule input is {"action":"stop"} — nothing to protect
   - CKV_AWS_130  # public subnets assign public IPs: they are the ALB's public subnets by design; app instances live in private subnets
+  - CKV_AWS_394  # aws_availability_zones not pinned: the lab takes the first two zones; a new AZ cannot shrink the set
+  - CKV2_AWS_28  # WAF on the lab ALB: the lab exercises ops drills, not edge security; the container-pipeline project is where WAF is demonstrated
