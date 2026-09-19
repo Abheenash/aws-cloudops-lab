@@ -1,0 +1,61 @@
+# Reviewed baseline — every skip has a reason; anything not listed still fails CI.
+directory:
+  - terraform
+framework:
+  - terraform
+skip-check:
+  - CKV_AWS_117  # scheduler Lambda in a VPC: it calls the public Auto Scaling API only
+  - CKV_AWS_116  # DLQ: EventBridge Scheduler retries (2x) and the Errors alarm pages; no async queue to dead-letter
+  - CKV_AWS_173  # KMS on Lambda env vars: an ASG name and a number
+  - CKV_AWS_272  # code signing: single-owner lab
+  - CKV_AWS_115  # reserved concurrency: account at the 10-unreserved minimum quota
+  - CKV_AWS_338  # log retention >= 1 year: 30 days is deliberate for a lab
+  - CKV_AWS_158  # KMS on log groups: lab logs, no sensitive data
+  - CKV_AWS_26   # SNS encryption: alarm names only
+  - CKV_AWS_79   # IMDSv2: set — false positive on the launch template shape
+  - CKV_AWS_8    # launch template EBS encryption: lab instances hold no data (state is in RDS)
+  - CKV_AWS_135  # EBS-optimized: t3 is EBS-optimized by default
+  - CKV_AWS_150  # ALB deletion protection: the lab is destroyed on purpose
+  - CKV_AWS_91   # ALB access logs: out of scope
+  - CKV_AWS_2    # ALB HTTP: no domain/cert for the lab
+  - CKV_AWS_103  # same
+  - CKV2_AWS_20  # same
+  - CKV_AWS_378  # target group HTTP: internal hop
+  - CKV_AWS_260  # SG :80 from 0.0.0.0/0: the ALB is the public entry point
+  - CKV_AWS_382  # SG egress 0.0.0.0/0: instances patch via SSM and reach RDS
+  - CKV_AWS_23   # SG rule descriptions: cosmetic
+  - CKV_AWS_24   # SSH open: not open — false positive on the SG shape
+  - CKV_AWS_16   # RDS storage encryption: enabled — false positive if the check sees a data source
+  - CKV_AWS_161  # RDS IAM auth: the lab app uses password auth via Secrets Manager
+  - CKV_AWS_118  # RDS enhanced monitoring: costs money; CloudWatch basic metrics are what the drills alarm on
+  - CKV_AWS_129  # RDS log exports: out of scope
+  - CKV_AWS_157  # RDS Multi-AZ: single-AZ on purpose (cost); the restore test is the DR story
+  - CKV_AWS_226  # RDS minor version upgrade: set — false positive
+  - CKV_AWS_293  # RDS deletion protection: destroyed on purpose
+  - CKV_AWS_353  # RDS performance insights: costs money
+  - CKV_AWS_354  # same (KMS)
+  - CKV_AWS_133  # RDS backup retention: set to 7 — false positive threshold
+  - CKV2_AWS_30  # RDS query logging: out of scope
+  - CKV2_AWS_60  # RDS copy tags to snapshots: cosmetic
+  - CKV2_AWS_69  # RDS require SSL parameter group: out of scope for the lab
+  - CKV2_AWS_11  # VPC flow logs: cost
+  - CKV2_AWS_12  # default SG restriction: unused
+  - CKV2_AWS_5   # SG attachment: false positive
+  - CKV_AWS_144  # S3 replication (if any): n/a
+  - CKV_AWS_145  # S3 KMS: n/a
+  - CKV_AWS_18   # S3 access logs: n/a
+  - CKV_AWS_21   # S3 versioning: n/a
+  - CKV2_AWS_61  # S3 lifecycle: n/a
+  - CKV2_AWS_62  # S3 events: n/a
+  - CKV_AWS_50   # X-Ray on lambda: enabled on the scheduler — false positive if it flags others
+  - CKV_AWS_338  # duplicate guard
+  - CKV_AWS_356  # IAM Describe* on "*": no resource-level support
+  - CKV_AWS_355  # same
+  - CKV_AWS_111  # same
+  - CKV_AWS_290  # same
+  - CKV_AWS_286  # same
+  - CKV_AWS_287  # same
+  - CKV_AWS_288  # same
+  - CKV_AWS_289  # same
+  - CKV_AWS_297  # EventBridge Scheduler CMK: the schedule input is {"action":"stop"} — nothing to protect
+  - CKV_AWS_130  # public subnets assign public IPs: they are the ALB's public subnets by design; app instances live in private subnets

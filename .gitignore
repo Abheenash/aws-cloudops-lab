@@ -6,3 +6,7 @@ build/
 *.zip
 __pycache__/
 .env
+
+.pytest_cache/
+__pycache__/
+terraform/build/

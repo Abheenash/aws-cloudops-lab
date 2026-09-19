@@ -57,3 +57,15 @@ variable "enable_security_baseline" {
   type        = bool
   default     = false
 }
+
+variable "rds_connections_alarm_pct" {
+  description = "Alarm when DatabaseConnections exceeds this percentage of the instance class's max_connections."
+  type        = number
+  default     = 70
+}
+
+variable "schedule_timezone" {
+  description = "Timezone for the non-prod stop/start schedules."
+  type        = string
+  default     = "America/Chicago"
+}

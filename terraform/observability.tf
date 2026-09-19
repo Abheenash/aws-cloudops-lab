@@ -56,17 +56,22 @@ resource "aws_cloudwatch_metric_alarm" "alb_latency_p95" {
 }
 
 # --- alarms: causes --------------------------------------------------------
+# Drill 03 finding (incidents/RESULTS-2026-07-10.md): "UnHealthyHostCount >= 1 for
+# 2 min" was un-trippable — the ASG replaced a failed instance faster than the
+# window. What we actually care about is running DEGRADED: fewer healthy targets
+# than the ASG's desired capacity, for a single minute. That fires the moment a
+# target is lost and clears when the replacement passes its checks.
 resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
   alarm_name          = "${var.prefix}-unhealthy-targets"
-  alarm_description   = "One or more targets failing health checks. Runbook: runbooks/unhealthy-targets.md"
+  alarm_description   = "Healthy targets below desired capacity — running degraded. Runbook: runbooks/unhealthy-targets.md"
   namespace           = "AWS/ApplicationELB"
-  metric_name         = "UnHealthyHostCount"
-  statistic           = "Maximum"
+  metric_name         = "HealthyHostCount"
+  statistic           = "Minimum"
   period              = 60
-  evaluation_periods  = 2
-  threshold           = 1
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  treat_missing_data  = "notBreaching"
+  evaluation_periods  = 1
+  threshold           = var.asg_desired
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "breaching" # no data at all means no healthy targets are reporting
   dimensions = {
     LoadBalancer = aws_lb.app.arn_suffix
     TargetGroup  = aws_lb_target_group.app.arn_suffix
@@ -91,15 +96,31 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
   ok_actions          = [aws_sns_topic.alerts.arn]
 }
 
+# Drill 04 finding: a fixed threshold of 80 never fired because a db.t3.micro's
+# max_connections is ~87 (LEAST(DBInstanceClassMemory/9531392, 5000) for 1 GiB) and
+# the drill saturated at ~72 without reaching 80. The threshold is now a percentage
+# of the class's real ceiling, so it scales with the instance size instead of
+# silently sitting above it.
+locals {
+  # PostgreSQL default formula, per RDS docs, for the classes this lab uses.
+  rds_max_connections = lookup({
+    "db.t3.micro"  = 87
+    "db.t3.small"  = 198
+    "db.t3.medium" = 405
+    "db.t4g.micro" = 87
+    "db.t4g.small" = 198
+  }, var.db_instance_class, 87)
+}
+
 resource "aws_cloudwatch_metric_alarm" "rds_connections" {
   alarm_name          = "${var.prefix}-rds-connections"
-  alarm_description   = "RDS connection count near capacity. Runbook: runbooks/rds-pressure.md"
+  alarm_description   = "RDS connections above ${var.rds_connections_alarm_pct}% of the class ceiling (${local.rds_max_connections}). Runbook: runbooks/rds-pressure.md"
   namespace           = "AWS/RDS"
   metric_name         = "DatabaseConnections"
   statistic           = "Maximum"
   period              = 60
   evaluation_periods  = 3
-  threshold           = 80
+  threshold           = floor(local.rds_max_connections * var.rds_connections_alarm_pct / 100)
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
   dimensions          = { DBInstanceIdentifier = aws_db_instance.main.identifier }

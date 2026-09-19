@@ -54,6 +54,23 @@ Full diagram lands in [`architecture/`](architecture/).
 
 > **Honesty note:** every "Observations / Results" table in this repo is intentionally left with `<fill after run>` cells. Measured numbers get written only after the drill is actually executed — not before.
 
+## v2 (Sep 2026) — the drill findings, fixed
+
+The two drills that *didn't* fire on 2026-07-10 are now design changes, not just notes:
+
+| Finding | Fix (in `terraform/observability.tf`) |
+| --- | --- |
+| Drill 03 — `UnHealthyHostCount ≥ 1 for 2 min` was un-trippable: the ASG replaced the instance faster than the window | Alarm on **`HealthyHostCount < asg_desired` for 1 minute** (missing data = breaching). It fires the moment a target is lost — "running degraded" is the condition that matters — and clears when the replacement passes its checks. |
+| Drill 04 — `DatabaseConnections > 80` never fired because a db.t3.micro's ceiling is ~87 and the drill saturated at ~72 | Threshold is now **70% of the instance class's real `max_connections`** (looked up per class: t3.micro 87, t3.small 198, …), so it scales with the instance instead of sitting above it. |
+
+Also new:
+
+- **The non-prod scheduler is infrastructure** (`terraform/automation.tf`): the Lambda, an execution role that can update *this* ASG only, two EventBridge Scheduler schedules (stop 20:00 / start 08:00 weekdays, `America/Chicago`), X-Ray, and an Errors alarm — a scheduler that silently fails to stop instances is a cost bug, so it pages.
+- **Tests** (`tests/test_automation.py`, 12 tests, moto-mocked): the scheduler sets min/desired correctly, rejects unknown actions loudly, and re-raises AWS errors; the patch-compliance report paginates, computes percentages, exits non-zero below threshold, and treats an empty inventory as visible-but-not-failing; the health check exits 0 on a healthy lab, 1 when an alarm is in ALARM or a target is unhealthy, and reports missing resources.
+- **CI**: pytest, `terraform fmt`/`validate` for the lab and the brownfield exercise, checkov against a reviewed baseline, and a check that every runbook an alarm references actually exists.
+
+These Terraform changes are validated and scanned but **not applied** — the lab is destroyed between sessions by design. Re-running drills 03 and 04 against the fixed alarms is the next live session.
+
 ## Repo map
 
 | Folder | What lives here |
