@@ -61,3 +61,5 @@ skip-check:
   - CKV_AWS_130  # public subnets assign public IPs: they are the ALB's public subnets by design; app instances live in private subnets
   - CKV_AWS_394  # aws_availability_zones not pinned: the lab takes the first two zones; a new AZ cannot shrink the set
   - CKV2_AWS_28  # WAF on the lab ALB: the lab exercises ops drills, not edge security; the container-pipeline project is where WAF is demonstrated
+  - CKV2_AWS_3   # GuardDuty org/region scoping: the detector is the opt-in single-account security baseline, deliberately not organisation-wide
+  - CKV2_AWS_6   # public-access block on the BROWNFIELD bucket: created deliberately drifted for the terraform import exercise and destroyed with it
