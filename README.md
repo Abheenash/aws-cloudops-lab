@@ -1,5 +1,7 @@
 # AWS Cloud Operations & Recovery Lab
 
+> **Sep 2026:** the two un-fired drill alarms redesigned (degraded-capacity, class-derived RDS threshold), the scheduler as IaC with scoped IAM + alarm, 12 moto tests, CI with a runbook link check (validated, not applied).
+
 > 🚧 **Status: active / in progress.** This is a deliberately-*operated* AWS environment — not another greenfield build. The point isn't to stand up services; it's to run them, break them on purpose, detect the failure, recover it, and record the evidence. Folders below are populated as each drill is completed.
 
 ## Why this project exists
