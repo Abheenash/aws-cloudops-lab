@@ -1,0 +1,27 @@
+---
+- name: Converge the Cloud Ops Lab app fleet
+  hosts: pg_cops_app
+  become: true
+  gather_facts: true
+
+  vars:
+    # Terraform owns the infrastructure; Ansible owns what runs on it. These come
+    # from `terraform output`, so there is exactly one source of truth for each.
+    copsapp_db_secret_arn: "{{ lookup('env', 'COPS_DB_SECRET_ARN') }}"
+    copsapp_db_host: "{{ lookup('env', 'COPS_DB_HOST') }}"
+    copsapp_db_name: "{{ lookup('env', 'COPS_DB_NAME') | default('postgres', true) }}"
+    copsapp_region: "{{ lookup('env', 'AWS_REGION') | default('us-east-1', true) }}"
+
+  pre_tasks:
+    - name: Fail fast if the Terraform-supplied values are missing
+      ansible.builtin.assert:
+        that:
+          - copsapp_db_secret_arn | length > 0
+          - copsapp_db_host | length > 0
+        fail_msg: >-
+          Set COPS_DB_SECRET_ARN and COPS_DB_HOST from `terraform output` before
+          running this play. See ansible/README.md.
+
+  roles:
+    - role: copsapp
+    - role: cloudwatch_agent

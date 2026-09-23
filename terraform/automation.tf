@@ -49,7 +49,7 @@ resource "aws_iam_role_policy" "scheduler_lambda" {
 resource "aws_lambda_function" "scheduler" {
   function_name    = "${var.prefix}-nonprod-scheduler"
   role             = aws_iam_role.scheduler_lambda.arn
-  runtime          = "python3.12"
+  runtime          = "python3.13"
   handler          = "nonprod_scheduler.handler"
   filename         = data.archive_file.scheduler.output_path
   source_code_hash = data.archive_file.scheduler.output_base64sha256

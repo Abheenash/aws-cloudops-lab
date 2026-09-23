@@ -1,0 +1,33 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Cloud Ops Lab app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# user_data ran this as root. There is no reason for a Flask app to be root.
+User={{ copsapp_user }}
+Group={{ copsapp_group }}
+Environment=DB_SECRET_ARN={{ copsapp_db_secret_arn }}
+Environment=DB_HOST={{ copsapp_db_host }}
+Environment=DB_NAME={{ copsapp_db_name }}
+Environment=AWS_REGION={{ copsapp_region }}
+ExecStart={{ copsapp_dir }}/venv/bin/gunicorn \
+  --workers {{ copsapp_workers }} \
+  --bind 0.0.0.0:{{ copsapp_port }} \
+  --chdir {{ copsapp_dir }} \
+  --access-logfile {{ copsapp_log_dir }}/access.log \
+  --error-logfile {{ copsapp_log_dir }}/error.log \
+  app:app
+Restart=always
+RestartSec=5
+
+# Hardening that a bash heredoc never gets around to.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ copsapp_log_dir }} {{ copsapp_dir }}
+
+[Install]
+WantedBy=multi-user.target

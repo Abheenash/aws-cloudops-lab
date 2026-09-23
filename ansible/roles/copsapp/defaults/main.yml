@@ -1,0 +1,22 @@
+---
+copsapp_user: copsapp
+copsapp_group: copsapp
+copsapp_dir: /opt/app
+copsapp_log_dir: /var/log/copsapp
+copsapp_port: 8080
+copsapp_workers: 2
+
+# Supplied by the playbook from Terraform outputs — never hard-coded here.
+copsapp_db_secret_arn: ""
+copsapp_db_host: ""
+copsapp_db_name: postgres
+copsapp_region: us-east-1
+
+copsapp_packages:
+  - python3
+  - python3-pip
+copsapp_pip_packages:
+  - flask
+  - gunicorn
+  - psycopg2-binary
+  - boto3

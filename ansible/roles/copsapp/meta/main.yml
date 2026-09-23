@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: copsapp
+  author: Rajolu Abheenash
+  description: The Cloud Ops Lab Flask app, its virtualenv and its systemd unit.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Amazon
+      versions:
+        - all
+dependencies: []

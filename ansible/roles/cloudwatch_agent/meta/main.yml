@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: cloudwatch_agent
+  author: Rajolu Abheenash
+  description: CloudWatch agent, configured to ship the app's access and error logs.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Amazon
+      versions:
+        - all
+dependencies: []

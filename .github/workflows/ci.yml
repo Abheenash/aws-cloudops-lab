@@ -4,15 +4,15 @@ jobs:
   automation-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
+        with: { python-version: "3.13" }
       - run: pip install -r tests/requirements.txt
       - run: python -m pytest tests -q
   terraform:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v3
       - run: terraform -chdir=terraform fmt -check -diff
       - run: terraform -chdir=terraform init -backend=false
@@ -23,10 +23,31 @@ jobs:
           config_file: .checkov.yaml
           quiet: true
           soft_fail: false
+  ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install ansible-core ansible-lint
+      - name: install collections
+        working-directory: ansible
+        run: ansible-galaxy collection install -r requirements.yml -p ./collections
+      - name: ansible-lint (production profile)
+        working-directory: ansible
+        env:
+          ANSIBLE_COLLECTIONS_PATH: ./collections
+        run: ansible-lint playbooks roles --exclude collections
+      - name: playbook syntax check
+        working-directory: ansible
+        env:
+          ANSIBLE_COLLECTIONS_PATH: ./collections
+        run: ansible-playbook --syntax-check -i localhost, playbooks/site.yml
+
   runbooks-link-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: every alarm's runbook reference must exist
         run: |
           set -e

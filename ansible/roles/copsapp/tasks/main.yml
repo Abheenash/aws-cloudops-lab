@@ -1,0 +1,86 @@
+---
+# What user_data did once at boot, expressed so it can be run again at any time
+# and converge. Every task is idempotent; re-running this play on a drifted
+# instance repairs it instead of requiring an instance replacement.
+
+- name: Install runtime packages
+  ansible.builtin.dnf:
+    name: "{{ copsapp_packages }}"
+    state: present
+
+- name: Create the service group
+  ansible.builtin.group:
+    name: "{{ copsapp_group }}"
+    system: true
+    state: present
+
+- name: Create the service account
+  ansible.builtin.user:
+    name: "{{ copsapp_user }}"
+    group: "{{ copsapp_group }}"
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+    state: present
+
+# user_data ran pip as root into the system interpreter, which is how you get a
+# broken dnf six months later. A venv keeps the app's dependencies off the
+# system Python entirely.
+- name: Create the application virtualenv
+  ansible.builtin.command:
+    cmd: python3 -m venv {{ copsapp_dir }}/venv
+    creates: "{{ copsapp_dir }}/venv/bin/python"
+
+- name: Install Python dependencies into the virtualenv
+  ansible.builtin.pip:
+    name: "{{ copsapp_pip_packages }}"
+    state: present
+    virtualenv: "{{ copsapp_dir }}/venv"
+  notify: Restart copsapp
+
+- name: Create application and log directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ copsapp_user }}"
+    group: "{{ copsapp_group }}"
+    mode: "0755"
+  loop:
+    - "{{ copsapp_dir }}"
+    - "{{ copsapp_log_dir }}"
+
+- name: Deploy the application
+  ansible.builtin.template:
+    src: app.py.j2
+    dest: "{{ copsapp_dir }}/app.py"
+    owner: "{{ copsapp_user }}"
+    group: "{{ copsapp_group }}"
+    mode: "0644"
+  notify: Restart copsapp
+
+- name: Install the systemd unit
+  ansible.builtin.template:
+    src: copsapp.service.j2
+    dest: /etc/systemd/system/copsapp.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart copsapp
+
+- name: Enable and start the service
+  ansible.builtin.systemd_service:
+    name: copsapp
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for the service to answer its health endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ copsapp_port }}/health"
+    status_code: [200, 500] # 500 is a DB problem, not a deploy problem
+  register: copsapp_health
+  retries: 6
+  delay: 5
+  until: copsapp_health is not failed

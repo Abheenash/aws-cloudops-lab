@@ -1,0 +1,11 @@
+---
+# A handler, not a `when: ...changed` task: the config is only re-applied when
+# the template actually changed, and it runs once at the end of the play even if
+# several tasks notify it.
+- name: Apply cloudwatch agent configuration
+  ansible.builtin.command:
+    cmd: >-
+      {{ cloudwatch_agent_ctl }} -a fetch-config -m ec2
+      -c file:{{ cloudwatch_agent_config_path }} -s
+  # The ctl command always exits 0, so ansible cannot infer this itself.
+  changed_when: true

@@ -1,0 +1,8 @@
+---
+# The reason Ansible is here at all: run the same play in --check mode and any
+# task reporting "changed" is configuration drift on a live instance. user_data
+# cannot do this — it ran once, at boot, and has no opinion about now.
+#
+#   ansible-playbook playbooks/drift-check.yml --check --diff
+- name: Report configuration drift without changing anything
+  ansible.builtin.import_playbook: site.yml

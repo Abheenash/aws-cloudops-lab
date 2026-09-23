@@ -1,0 +1,19 @@
+---
+# Dynamic inventory: the fleet is an autoscaling group, so a static host list is
+# wrong the moment it scales. Hosts are discovered by the same tag Terraform sets
+# and Patch Manager consumes, which keeps one source of truth for "what is the app".
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+filters:
+  "tag:Patch Group": cops-app
+  instance-state-name: running
+keyed_groups:
+  - key: tags['Patch Group']
+    prefix: pg
+hostnames:
+  - instance-id
+compose:
+  ansible_connection: "'aws_ssm'"
+  ansible_aws_ssm_region: "'us-east-1'"
+  ansible_aws_ssm_bucket_name: "'cops-ansible-ssm'"

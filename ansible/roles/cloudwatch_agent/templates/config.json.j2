@@ -1,0 +1,21 @@
+{
+  "agent": { "run_as_user": "root" },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "{{ cloudwatch_agent_log_dir }}/access.log",
+            "log_group_name": "{{ cloudwatch_agent_log_group }}",
+            "log_stream_name": "{instance_id}/access"
+          },
+          {
+            "file_path": "{{ cloudwatch_agent_log_dir }}/error.log",
+            "log_group_name": "{{ cloudwatch_agent_log_group }}",
+            "log_stream_name": "{instance_id}/error"
+          }
+        ]
+      }
+    }
+  }
+}
