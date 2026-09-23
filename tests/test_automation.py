@@ -4,6 +4,7 @@ import sys
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 from moto import mock_aws
 
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
@@ -11,9 +12,9 @@ os.environ["AWS_ACCESS_KEY_ID"] = "testing"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ["AWS_REGION"] = "us-east-1"
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "automation"))
-import nonprod_scheduler  # noqa: E402
-import patch_compliance_report  # noqa: E402
-import resource_health_check  # noqa: E402
+import nonprod_scheduler
+import patch_compliance_report
+import resource_health_check
 
 
 # ------------------------------------------------------------------ nonprod_scheduler
@@ -57,9 +58,11 @@ def test_unknown_action_fails_loudly(asg):
 
 
 def test_aws_failure_is_raised_not_swallowed():
-    with mock_aws():  # no ASG exists
-        with pytest.raises(Exception):
-            nonprod_scheduler.handler({"action": "stop"}, None)
+    # botocore raises ClientError for a missing ASG. Asserting on bare Exception
+    # would also pass if the handler raised TypeError from a refactor, which is
+    # the opposite of what this test is for.
+    with mock_aws(), pytest.raises(ClientError):
+        nonprod_scheduler.handler({"action": "stop"}, None)
 
 
 # ------------------------------------------------------------------ patch_compliance_report
@@ -123,7 +126,9 @@ def lab():
         ec2 = boto3.client("ec2")
         vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
         s1 = ec2.create_subnet(VpcId=vpc, CidrBlock="10.0.1.0/24", AvailabilityZone="us-east-1a")["Subnet"]["SubnetId"]
-        s2 = ec2.create_subnet(VpcId=vpc, CidrBlock="10.0.2.0/24", AvailabilityZone="us-east-1b")["Subnet"]["SubnetId"]
+        # A second subnet in another AZ is required for the target group to be
+        # creatable; the id itself is not used.
+        ec2.create_subnet(VpcId=vpc, CidrBlock="10.0.2.0/24", AvailabilityZone="us-east-1b")
         elbv2 = boto3.client("elbv2")
         tg = elbv2.create_target_group(Name="cops-app-tg", Protocol="HTTP", Port=80, VpcId=vpc)["TargetGroups"][0]["TargetGroupArn"]
         inst = ec2.run_instances(ImageId="ami-12345678", MinCount=1, MaxCount=1, SubnetId=s1)["Instances"][0]["InstanceId"]

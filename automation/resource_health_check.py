@@ -75,7 +75,7 @@ def check_alb(elbv2):
         detail = f" ({reason})" if reason else ""
         lines.append(f"  [{marker}] {target_id}: {state}{detail}")
     header = f"ALB {TARGET_GROUP_NAME}: {len(descriptions)} target(s)"
-    return healthy, [header] + lines
+    return healthy, [header, *lines]
 
 
 def check_rds(rds):

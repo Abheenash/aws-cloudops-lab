@@ -14,6 +14,7 @@ Bounded and self-releasing: opens at most --count connections and closes them
 after --hold seconds even if left unattended.
 """
 import argparse
+import contextlib
 import json
 import sys
 import time
@@ -46,7 +47,7 @@ def main() -> int:
             c.autocommit = True
             c.cursor().execute("SELECT 1")
             conns.append(c)
-        except Exception as e:  # noqa: BLE001 — surface where capacity runs out
+        except Exception as e:
             print(f"stopped opening at {i}: {e}", flush=True)
             break
 
@@ -55,10 +56,10 @@ def main() -> int:
         time.sleep(args.hold)
     finally:
         for c in conns:
-            try:
+            # Best effort: the point of this drill is to exhaust the pool, and a
+            # connection the server already killed raises on close. Nothing to do.
+            with contextlib.suppress(Exception):
                 c.close()
-            except Exception:  # noqa: BLE001
-                pass
         print("released all connections", flush=True)
     return 0
 
